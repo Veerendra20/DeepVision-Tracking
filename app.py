@@ -27,7 +27,7 @@ st.markdown("""
         border: 1px solid #3e4149;
     }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 # Initialize models
 @st.cache_resource
