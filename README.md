@@ -1,48 +1,48 @@
-# AI Surveillance: Human Tracking and Live Counting System
+# 🛡️ Professional AI Surveillance Dashboard
 
-A complete end-to-end AI-based system for detecting, tracking, and counting humans in real-time or from static images.
+A high-performance Human Tracking & Analytics system built with YOLOv8, DeepSORT, and Streamlit. This system provides real-time head-level tracking, cumulative counting with temporal validation, and live analytics.
 
-## Features
+## 🌟 Key Features
 
-- **Human Detection**: Powered by YOLOv8 for fast and accurate person detection.
-- **Real-time Tracking**: Uses DeepSORT to maintain consistent IDs across frames.
-- **Live & Total Counting**: Displays current persons in frame (Live Count) and cumulative unique individuals (Total Count).
-- **Interactive UI**: Built with Streamlit for a seamless experience with Image Upload and Webcam modes.
+- **🎯 Human-Centric Face Tracking**: Automatically identifies the physical displacement of individuals and focuses bounding boxes on the **face area** for a cleaner, targeted interface.
+- **🔢 Dual-Metric Counting**:
+  - **Live Count**: Real-time occupancy of the monitored area.
+  - **Total Unique Count**: Cumulative tally of unique individuals detected during the session.
+- **🛡️ Multi-Layer Validation**:
+  - **Temporal Persistence**: Requires 5 frames of confirmation to filter out flicker.
+  - **Movement Filtering**: Distinguishes between moving humans and static objects (bags, seats) using a 5px/10-frame displacement check.
+- **📊 Analytics Dashboard**:
+  - Real-time **Line Charts** for occupancy history.
+  - Professional metrics including **Live FPS** and detection confidence.
+  - **🔄 Session Reset**: Instantly clear history and logs.
+- **📄 Event Logging**: Automatic background logging of detection events to `surveillance.log`.
 
-## Installation
+## 📂 Project Structure
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd SURVAILANCE
-   ```
+- `app.py`: Main Streamlit Dashboard.
+- `config.py`: Centralized system parameters and thresholds.
+- `detection/`: YOLOv8 and Face Detection modules.
+- `tracking/`: DeepSORT tracking integration.
+- `utils/`: Logic for counting, movement filtering, and advanced visualization.
 
-2. **Create a virtual environment**:
-   ```bash
-   python -m venv venv
-   venv\Scripts\activate  # On Windows
-   source venv/bin/activate  # On Linux/macOS
-   ```
+## 🚀 Quick Start
 
-3. **Install Dependencies**:
+1. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-## How to Run
+2. **Run the Dashboard**:
+   ```bash
+   streamlit run app.py
+   ```
 
-Launch the Streamlit application:
-```bash
-streamlit run app.py
-```
+## 🛠️ Configuration
 
-## Project Structure
-
-- `app.py`: Main Streamlit interface.
-- `detection/`: Modules for YOLO human detection.
-- `tracking/`: DeepSORT tracking integration.
-- `utils/`: Counting and visualization helper functions.
-- `models/`: Destination for saved model weights (e.g., `yolov8n.pt`).
+Adjust tracking sensitivity in `config.py`:
+- `PERSISTENCE_THRESHOLD`: Frames required for confirmation.
+- `MOVEMENT_MIN_PX`: Minimum movement to be considered "Living."
+- `STATIC_THRESHOLD`: Frames allowed before an object is ignored as "Static."
 
 ## Requirements
 

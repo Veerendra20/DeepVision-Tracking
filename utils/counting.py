@@ -1,26 +1,39 @@
 import math
+import logging
+from typing import List, Tuple, Dict, Set
+import config
+
+# Configure logging
+logging.basicConfig(
+    filename=config.LOG_FILE,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class PeopleCounter:
-    def __init__(self, persistence_threshold=5, static_threshold=10, movement_min_px=5):
+    def __init__(self, 
+                 persistence_threshold: int = config.PERSISTENCE_THRESHOLD, 
+                 static_threshold: int = config.STATIC_THRESHOLD, 
+                 movement_min_px: int = config.MOVEMENT_MIN_PX):
         """
-        Initialize the people counter.
-        :param persistence_threshold: Minimum frames a track must be confirmed before counting in total.
-        :param static_threshold: Frames an object can stay static before it is ignored as a 'potential bag/object'.
-        :param movement_min_px: Minimum pixels moved to be considered non-static.
+        Initialize the professional people counter.
         """
-        self.unique_ids = set()
-        self.track_frame_counts = {} # track_id -> frame_count
+        self.unique_ids: Set[int] = set()
+        self.track_frame_counts: Dict[int, int] = {} 
         self.persistence_threshold = persistence_threshold
         
         # Movement filtering
-        self.prev_positions = {} # {track_id: (center_x, center_y)}
-        self.static_frames = {} # {track_id: count}
+        self.prev_positions: Dict[int, Tuple[float, float]] = {} 
+        self.static_frames: Dict[int, int] = {} 
         self.static_threshold = static_threshold
         self.movement_min_px = movement_min_px
+        
+        logging.info("PeopleCounter initialized with persistence=%d, static_threshold=%d", 
+                     persistence_threshold, static_threshold)
 
-    def update(self, tracks):
+    def update(self, tracks: List) -> Tuple[int, int]:
         """
-        Update with temporal validation and movement-based filtering.
+        Update counts with temporal validation and movement-based filtering.
         :param tracks: List of active tracks from DeepSORT.
         :return: (current_count, total_unique_count)
         """
@@ -52,10 +65,10 @@ class PeopleCounter:
             if self.static_frames[track_id] > self.static_threshold:
                 continue
             
-            # If moving (or not yet confirmed as static), include in current count
+            # If moving, include in current live count
             current_count += 1
             
-            # Temporal validation for total count
+            # Temporal validation for total cumulative count
             if track_id not in self.track_frame_counts:
                 self.track_frame_counts[track_id] = 0
             
@@ -63,21 +76,24 @@ class PeopleCounter:
             
             # Only add to total if it has persisted for the threshold number of frames
             if self.track_frame_counts[track_id] >= self.persistence_threshold:
-                self.unique_ids.add(track_id)
+                if track_id not in self.unique_ids:
+                    self.unique_ids.add(track_id)
+                    logging.info(f"[EVENT] New unique person detected. ID: {track_id}")
             
         return current_count, len(self.unique_ids)
 
-    def get_count(self):
+    def get_count(self) -> int:
         """
         Get the total count of unique persons detected.
         """
         return len(self.unique_ids)
 
-    def reset_count(self):
+    def reset_count(self) -> None:
         """
-        Reset the counter.
+        Reset all internal counters and logs for a new session.
         """
         self.unique_ids.clear()
         self.track_frame_counts.clear()
         self.prev_positions.clear()
         self.static_frames.clear()
+        logging.info("PeopleCounter session reset.")

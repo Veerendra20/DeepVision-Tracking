@@ -1,8 +1,9 @@
 import cv2
+from typing import List, Tuple, Any
 
-def draw_detections(frame, detections, face_detector=None, color=(0, 255, 0), label="Person"):
+def draw_detections(frame: Any, detections: List, face_detector: Any = None, color: Tuple[int, int, int] = (0, 255, 0), label: str = "Person") -> Any:
     """
-    Draw boxes for detections. Focuses on the face area.
+    Draw boxes for detections, focusing on the face area if possible.
     """
     for det in detections:
         x1, y1, x2, y2, conf, cls = det
@@ -25,9 +26,9 @@ def draw_detections(frame, detections, face_detector=None, color=(0, 255, 0), la
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
     return frame
 
-def draw_tracks(frame, tracks, face_detector=None, color=(0, 255, 255)):
+def draw_tracks(frame: Any, tracks: List, face_detector: Any = None, color: Tuple[int, int, int] = (0, 255, 255)) -> Any:
     """
-    Draw boxes and IDs for tracked individuals, focusing on the face.
+    Draw boxes and IDs for tracked individuals, prioritizing the face area.
     """
     for track in tracks:
         if not track.is_confirmed():
@@ -54,18 +55,19 @@ def draw_tracks(frame, tracks, face_detector=None, color=(0, 255, 255)):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     return frame
 
-def draw_count(frame, current_count, total_count):
+def draw_count(frame: Any, current_count: int, total_count: int) -> Any:
     """
-    Display both live and total counts on the frame.
+    Draw current and total attendee counts on the frame.
     """
-    # Draw a semi-transparent background for the counts
+    # Create semi-transparent overlay
     overlay = frame.copy()
-    cv2.rectangle(overlay, (10, 10), (300, 100), (0, 0, 0), -1)
-    cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+    cv2.rectangle(overlay, (10, 10), (250, 100), (0, 0, 0), -1)
+    alpha = 0.6
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
     
-    # Draw the counts
-    cv2.putText(frame, f"LIVE COUNT: {current_count}", (20, 45),
+    cv2.putText(frame, f"LIVE: {current_count}", (20, 45), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-    cv2.putText(frame, f"TOTAL COUNT: {total_count}", (20, 85),
+    cv2.putText(frame, f"TOTAL: {total_count}", (20, 85), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+    
     return frame

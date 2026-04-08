@@ -2,102 +2,135 @@ import streamlit as st
 import cv2
 import PIL.Image
 import numpy as np
-import tempfile
+import pandas as pd
 import time
-from detection.yolo_detector import YOLODetector
+import config
 from detection.yolo_detector import YOLODetector
 from detection.face_detector import FaceDetector
 from tracking.tracker import PersonTracker
 from utils.counting import PeopleCounter
 from utils.visualization import draw_detections, draw_tracks, draw_count
 
-# Page config
-st.set_page_config(page_title="AI Surveillance System", page_icon="🛡️", layout="wide")
+# Page config for professional appearance
+st.set_page_config(page_title="AI Surveillance Dashboard", page_icon="🛡️", layout="wide")
+
+# Custom CSS for polished look
+st.markdown("""
+    <style>
+    .main {
+        background-color: #0e1117;
+    }
+    .stMetric {
+        background-color: #1e2130;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #3e4149;
+    }
+    </style>
+    """, unsafe_allow_stdio=True)
 
 # Initialize models
 @st.cache_resource
 def load_models():
-    yolo = YOLODetector(model_path='yolov8n.pt')
+    yolo = YOLODetector(model_path=config.YOLO_MODEL)
     face = FaceDetector()
     return yolo, face
 
 yolo_detector, face_detector = load_models()
 
 def main():
-    st.title("🛡️ AI-based Human and Face Tracking System")
-    st.markdown("""
-    This system detects humans and faces, tracks individuals with unique IDs, and counts them in real-time.
-    """)
+    st.title("🛡️ Professional AI Surveillance Dashboard")
+    st.markdown("---")
 
-    # Sidebar
-    st.sidebar.header("Settings")
-    mode = st.sidebar.radio("Select Mode", ["Image Upload", "Webcam (Real-time)"])
+    # Sidebar Organization
+    st.sidebar.header("🛠️ System Configuration")
     
-    conf_threshold = st.sidebar.slider("Confidence Threshold", 0.1, 1.0, 0.5, 0.05)
-    show_ids = st.sidebar.checkbox("Track IDs", value=True)
+    with st.sidebar.expander("🔍 Detection Settings", expanded=True):
+        mode = st.radio("Processing Mode", ["Real-time Webcam", "Static Image Upload"])
+        conf_threshold = st.slider("Confidence Threshold", 0.1, 1.0, config.DEFAULT_CONFIDENCE, 0.05)
+        show_ids = st.checkbox("Enable Tracking IDs", value=True)
 
-    if mode == "Image Upload":
-        uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    with st.sidebar.expander("📈 Analytics Settings"):
+        show_chart = st.checkbox("Show Live Analytics Chart", value=True)
+        chart_size = st.number_input("Chart History (frames)", 10, 500, config.CHART_HISTORY_SIZE)
+
+    if st.sidebar.button("🔄 Reset Global Session", type="primary"):
+        st.cache_resource.clear()
+        st.rerun()
+
+    # Main UI Logic
+    if mode == "Static Image Upload":
+        uploaded_file = st.file_uploader("Upload Security Frame (JPG/PNG)", type=["jpg", "jpeg", "png"])
         
         if uploaded_file is not None:
-            # Load image
             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
             image = cv2.imdecode(file_bytes, 1)
-            original_image = image.copy()
             
-            # Process image
-            with st.spinner("Processing..."):
-                # Human Detection
+            with st.spinner("Analyzing high-resolution frame..."):
                 detections = yolo_detector.detect(image, conf_threshold=conf_threshold)
-                
-                # Draw
-                processed_image = image.copy()
-                processed_image = draw_detections(processed_image, detections, face_detector=face_detector)
-                
-                # In Image Upload mode, Live and Total count are the same as it's a single frame
+                processed_image = draw_detections(image.copy(), detections, face_detector=face_detector)
                 processed_image = draw_count(processed_image, len(detections), len(detections))
             
-            # Display results
             col1, col2 = st.columns(2)
             with col1:
-                st.subheader("Original Image")
-                st.image(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB), use_container_width=True)
+                st.subheader("Original Capture")
+                st.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), use_container_width=True)
             with col2:
-                st.subheader("Processed Image")
+                st.subheader("Face-Localized Analysis")
                 st.image(cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB), use_container_width=True)
             
-            st.success(f"Detected {len(detections)} person(s).")
+            st.success(f"Detections Completed: {len(detections)} individuals identified.")
 
-    elif mode == "Webcam (Real-time)":
-        st.subheader("Webcam Live Feed")
-        run = st.checkbox("Run Webcam")
+    else:
+        # Webcam Mode with Advanced Analytics
+        col_vid, col_stats = st.columns([2, 1])
         
-        # Initialize Tracker and Counter
+        with col_vid:
+            st.subheader("📹 Live Surveillance Feed")
+            run = st.checkbox("Activate Camera System", key="cam_switch")
+            FRAME_WINDOW = st.image([])
+            
+        with col_stats:
+            st.subheader("📊 Live Analytics")
+            m1, m2, m3 = st.columns(3)
+            curr_metric = m1.empty()
+            total_metric = m2.empty()
+            fps_metric = m3.empty()
+            
+            chart_container = st.empty()
+            log_container = st.empty()
+
+        # Initialize Logic Components
         tracker = PersonTracker()
         counter = PeopleCounter()
         
-        FRAME_WINDOW = st.image([])
+        # Analytics state
+        count_history = []
+        fps_history = []
+        
         cap = cv2.VideoCapture(0)
         
-        if not cap.isOpened():
-            st.error("Could not access webcam. Please ensure it is connected and accessible.")
-            run = False
-
+        prev_time = time.time()
+        
         while run:
             ret, frame = cap.read()
             if not ret:
-                st.error("Failed to capture image")
+                st.error("Access denied: Peripheral camera hardware not found.")
                 break
             
-            # Detect
+            # Processing Pipeline
             detections = yolo_detector.detect(frame, conf_threshold=conf_threshold)
-            
-            # Track
             tracks = tracker.update(detections, frame)
-            
-            # Count
             live_count, total_count = counter.update(tracks)
             
+            # Performance Calc
+            curr_time = time.time()
+            fps = 1 / (curr_time - prev_time)
+            prev_time = curr_time
+            fps_history.append(fps)
+            if len(fps_history) > 30: fps_history.pop(0)
+            avg_fps = sum(fps_history) / len(fps_history)
+
             # Visualization
             processed_frame = frame.copy()
             if show_ids:
@@ -107,16 +140,29 @@ def main():
             
             processed_frame = draw_count(processed_frame, live_count, total_count)
             
-            # Convert BGR to RGB
-            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-            FRAME_WINDOW.image(processed_frame)
+            # Update Dashboard
+            FRAME_WINDOW.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB))
             
-            # Small delay to keep UI responsive
+            curr_metric.metric("Live", live_count)
+            total_metric.metric("Total", total_count)
+            fps_metric.metric("FPS", f"{avg_fps:.1f}")
+            
+            # Chart update
+            if show_chart:
+                count_history.append(live_count)
+                if len(count_history) > chart_size: count_history.pop(0)
+                chart_container.line_chart(pd.DataFrame(count_history, columns=["Live Occupancy"]), height=200)
+
+            # Session Log update (Small sampling)
+            if total_count > 0:
+                log_container.info(f"System Status: Operational. Total Unique Identified: {total_count}")
+
             time.sleep(0.01)
             
         else:
-            cap.release()
-            st.info("Webcam stopped.")
+            if 'cap' in locals() and cap.isOpened():
+                cap.release()
+            st.info("System Standby: Security protocols inactive.")
 
 if __name__ == "__main__":
     main()
