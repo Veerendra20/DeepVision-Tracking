@@ -6,6 +6,7 @@ import tempfile
 import time
 from detection.yolo_detector import YOLODetector
 from detection.yolo_detector import YOLODetector
+from detection.face_detector import FaceDetector
 from tracking.tracker import PersonTracker
 from utils.counting import PeopleCounter
 from utils.visualization import draw_detections, draw_tracks, draw_count
@@ -17,9 +18,10 @@ st.set_page_config(page_title="AI Surveillance System", page_icon="🛡️", lay
 @st.cache_resource
 def load_models():
     yolo = YOLODetector(model_path='yolov8n.pt')
-    return yolo
+    face = FaceDetector()
+    return yolo, face
 
-yolo_detector = load_models()
+yolo_detector, face_detector = load_models()
 
 def main():
     st.title("🛡️ AI-based Human and Face Tracking System")
@@ -50,7 +52,7 @@ def main():
                 
                 # Draw
                 processed_image = image.copy()
-                processed_image = draw_detections(processed_image, detections)
+                processed_image = draw_detections(processed_image, detections, face_detector=face_detector)
                 
                 # In Image Upload mode, Live and Total count are the same as it's a single frame
                 processed_image = draw_count(processed_image, len(detections), len(detections))
@@ -99,9 +101,9 @@ def main():
             # Visualization
             processed_frame = frame.copy()
             if show_ids:
-                processed_frame = draw_tracks(processed_frame, tracks)
+                processed_frame = draw_tracks(processed_frame, tracks, face_detector=face_detector)
             else:
-                processed_frame = draw_detections(processed_frame, detections)
+                processed_frame = draw_detections(processed_frame, detections, face_detector=face_detector)
             
             processed_frame = draw_count(processed_frame, live_count, total_count)
             
