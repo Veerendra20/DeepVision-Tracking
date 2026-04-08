@@ -4,6 +4,8 @@ import PIL.Image
 import numpy as np
 import pandas as pd
 import time
+import tempfile
+import os
 import config
 from detection.yolo_detector import YOLODetector
 from detection.face_detector import FaceDetector
@@ -46,7 +48,7 @@ def main():
     st.sidebar.header("🛠️ System Configuration")
     
     with st.sidebar.expander("🔍 Detection Settings", expanded=True):
-        mode = st.radio("Processing Mode", ["Real-time Webcam", "Static Image Upload"])
+        mode = st.radio("Processing Mode", ["Real-time Webcam", "Video File Upload", "Static Image Upload"])
         conf_threshold = st.slider("Confidence Threshold", 0.1, 1.0, config.DEFAULT_CONFIDENCE, 0.05)
         show_ids = st.checkbox("Enable Tracking IDs", value=True)
 
@@ -80,6 +82,89 @@ def main():
                 st.image(cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB), use_container_width=True)
             
             st.success(f"Detections Completed: {len(detections)} individuals identified.")
+
+    elif mode == "Video File Upload":
+        uploaded_video = st.file_uploader("Upload Surveillance Footage (MP4/AVI/MOV)", type=["mp4", "avi", "mov"])
+        
+        if uploaded_video is not None:
+            # Save uploaded video to a temporary file
+            tfile = tempfile.NamedTemporaryFile(delete=False)
+            tfile.write(uploaded_video.read())
+            video_path = tfile.name
+            
+            col_vid, col_stats = st.columns([2, 1])
+            with col_vid:
+                st.subheader("📼 Video Processing Feed")
+                run_video = st.checkbox("Start Video Analysis", key="vid_switch")
+                FRAME_WINDOW = st.image([])
+            
+            with col_stats:
+                st.subheader("📊 Video Analytics")
+                m1, m2, m3 = st.columns(3)
+                curr_metric = m1.empty()
+                total_metric = m2.empty()
+                fps_metric = m3.empty()
+                chart_container = st.empty()
+                log_container = st.empty()
+
+            # Logic Components
+            tracker = PersonTracker()
+            counter = PeopleCounter()
+            count_history = []
+            fps_history = []
+            
+            cap = cv2.VideoCapture(video_path)
+            prev_time = time.time()
+            
+            while run_video and cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    st.info("End of video file reached.")
+                    break
+                
+                # Resize for performance optimization
+                frame = cv2.resize(frame, (960, 540))
+                
+                # Pipeline
+                detections = yolo_detector.detect(frame, conf_threshold=conf_threshold)
+                tracks = tracker.update(detections, frame)
+                live_count, total_count = counter.update(tracks)
+                
+                # Performance
+                curr_time = time.time()
+                fps = 1 / (curr_time - prev_time)
+                prev_time = curr_time
+                fps_history.append(fps)
+                if len(fps_history) > 30: fps_history.pop(0)
+                avg_fps = sum(fps_history) / len(fps_history)
+
+                # Viz
+                processed_frame = frame.copy()
+                if show_ids:
+                    processed_frame = draw_tracks(processed_frame, tracks, face_detector=face_detector)
+                else:
+                    processed_frame = draw_detections(processed_frame, detections, face_detector=face_detector)
+                processed_frame = draw_count(processed_frame, live_count, total_count)
+                
+                # Update Dashboard
+                FRAME_WINDOW.image(cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB))
+                
+                curr_metric.metric("Live", live_count)
+                total_metric.metric("Total", total_count)
+                fps_metric.metric("FPS", f"{avg_fps:.1f}")
+                
+                if show_chart:
+                    count_history.append(live_count)
+                    if len(count_history) > chart_size: count_history.pop(0)
+                    chart_container.line_chart(pd.DataFrame(count_history, columns=["Live Occupancy"]), height=200)
+
+                if total_count > 0:
+                    log_container.info(f"Status: Processing. Total Unique Count: {total_count}")
+
+            cap.release()
+            tfile.close()
+            if os.path.exists(video_path):
+                os.unlink(video_path)
 
     else:
         # Webcam Mode with Advanced Analytics

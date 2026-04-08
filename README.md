@@ -4,7 +4,8 @@ A high-performance Human Tracking & Analytics system built with YOLOv8, DeepSORT
 
 ## 🌟 Key Features
 
-- **🎯 Human-Centric Face Tracking**: Automatically identifies the physical displacement of individuals and focuses bounding boxes on the **face area** for a cleaner, targeted interface.
+- **🎯 Human-Centric Face Tracking**: Automatically identifies individuals and focuses bounding boxes on the face area.
+- **📼 Video File Processing**: Integrated support for uploading and analyzing recorded footage (`.mp4`, `.avi`, `.mov`).
 - **🔢 Dual-Metric Counting**:
   - **Live Count**: Real-time occupancy of the monitored area.
   - **Total Unique Count**: Cumulative tally of unique individuals detected during the session.
