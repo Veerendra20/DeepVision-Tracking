@@ -3,8 +3,6 @@ opencv-python
 deep_sort_realtime
 streamlit
 numpy
-pandas
 scipy
 torch
 torchvision
-torchaudio
