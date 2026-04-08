@@ -1,8 +1,11 @@
 from ultralytics import YOLO
 import cv2
+import numpy as np
+from typing import List, Any
+import config
 
 class YOLODetector:
-    def __init__(self, model_path='yolov8n.pt'):
+    def __init__(self, model_path: str = config.YOLO_MODEL):
         """
         Initialize the YOLOv8 detector.
         :param model_path: Path to the YOLOv8 model file.
@@ -10,7 +13,7 @@ class YOLODetector:
         self.model = YOLO(model_path)
         self.classes = self.model.names
 
-    def detect(self, frame, conf_threshold=0.5):
+    def detect(self, frame: np.ndarray, conf_threshold: float = config.DEFAULT_CONFIDENCE) -> List[List[float]]:
         """
         Detect humans in a frame.
         :param frame: Input image/frame.

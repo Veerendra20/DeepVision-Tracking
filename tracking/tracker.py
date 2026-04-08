@@ -1,7 +1,9 @@
 from deep_sort_realtime.deepsort_tracker import DeepSort
+import numpy as np
+from typing import List, Any
 
 class PersonTracker:
-    def __init__(self, max_age=30, n_init=3, nms_max_overlap=1.0, max_cosine_distance=0.2):
+    def __init__(self, max_age: int = 30, n_init: int = 3, nms_max_overlap: float = 1.0, max_cosine_distance: float = 0.2):
         """
         Initialize the DeepSORT tracker.
         :param max_age: Maximum number of frames to keep a track alive without detection.
@@ -21,7 +23,7 @@ class PersonTracker:
             bgr=True
         )
 
-    def update(self, detections, frame):
+    def update(self, detections: List[List[float]], frame: np.ndarray) -> List[Any]:
         """
         Update tracks with new detections.
         :param detections: List of detections [[x1, y1, x2, y2, confidence, class_id], ...]
