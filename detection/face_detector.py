@@ -1,0 +1,27 @@
+import cv2
+import os
+
+class FaceDetector:
+    def __init__(self, cascade_path=None):
+        """
+        Initialize the Haar Cascade face detector.
+        :param cascade_path: Path to the Haar Cascade XML file.
+                             If None, use the default OpenCV face cascade.
+        """
+        if cascade_path is None:
+            # Common path for OpenCV Haar Cascades
+            cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        
+        self.face_cascade = cv2.CascadeClassifier(cascade_path)
+
+    def detect(self, frame):
+        """
+        Detect faces in a frame.
+        :param frame: Input image/frame.
+        :return: List of face bounding boxes [[x, y, w, h], ...]
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        
+        # Convert to list of lists [x, y, w, h]
+        return faces.tolist() if len(faces) > 0 else []
